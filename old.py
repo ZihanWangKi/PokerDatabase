@@ -4,7 +4,7 @@ def simple():
     df = pd.read_csv('poker_data_simple.csv')
 
     win_tf = df["Won"].map(positive).tolist()
-    win_games = list(filter(lambda x: win_tf[x] == 1, xrange(len(win_tf))))
+    win_games = list(filter(lambda x: win_tf[x] == 1, range(len(win_tf))))
     preflop_value = df['PreflopV'].tolist()
     flop_value = df['FlopV'].tolist()
     turn_value = df['TurnV'].tolist()
@@ -41,7 +41,7 @@ def simple():
     all_flop = defaultdict(float)
     all_turn = defaultdict(float)
     all_river = defaultdict(float)
-    for i in xrange(len(win_tf)):
+    for i in range(len(win_tf)):
         all_preflop[preflop_value[i]] += 1.0
         all_flop[flop_value[i]] += 1.0
         all_turn[turn_value[i]] += 1.0
