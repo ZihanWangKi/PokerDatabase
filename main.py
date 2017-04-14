@@ -394,6 +394,148 @@ def analyze_game():
     # print bet_size_model.summary()
 
 
+def handvalue_boxplot():
+    from pylab import plot, show, savefig, xlim, figure, \
+        hold, ylim, legend, boxplot, setp, axes
+
+    # function for setting the colors of the box plots pairs
+    def setBoxColors(bp):
+        setp(bp['boxes'][0], color='blue')
+        setp(bp['caps'][0], color='blue')
+        setp(bp['caps'][1], color='blue')
+        setp(bp['whiskers'][0], color='blue')
+        setp(bp['whiskers'][1], color='blue')
+        setp(bp['fliers'][0], markeredgecolor='blue')
+        setp(bp['medians'][0], color='blue')
+
+        setp(bp['boxes'][1], color='red')
+        setp(bp['caps'][2], color='red')
+        setp(bp['caps'][3], color='red')
+        setp(bp['whiskers'][2], color='red')
+        setp(bp['whiskers'][3], color='red')
+        setp(bp['fliers'][1], markeredgecolor='red')
+        setp(bp['medians'][1], color='red')
+
+    df = pd.read_csv("data.csv")
+    A = [df['FlopVSim'], df['FlopVCom']]
+    B = [df['TurnVSim'], df['TurnVCom']]
+    C = [df['RiverVSim'], df['RiverVCom']]
+
+    fig = figure()
+    ax = axes()
+
+    # first boxplot pair
+    bp = boxplot(A, positions=[1, 2], widths=0.6)
+    setBoxColors(bp)
+
+    # second boxplot pair
+    bp = boxplot(B, positions=[4, 5], widths=0.6)
+    setBoxColors(bp)
+
+    # thrid boxplot pair
+    # Note, useed whis = range to let boxplot include all the data
+    bp = boxplot(C, positions=[7, 8], whis="range", widths=0.6)
+    setBoxColors(bp)
+
+    # set axes limits and labels
+    xlim(0, 9)
+    ylim(0, 1)
+    ax.set_xticklabels(['Flop', 'Turn', 'River'])
+    ax.set_xticks([1.5, 4.5, 7.5])
+
+    # draw temporary red and blue lines and use them to create a legend
+    hB, = plot([1, 1], 'b-')
+    hR, = plot([1, 1], 'r-')
+    legend((hB, hR), ('Simple', 'Complex'))
+    hB.set_visible(False)
+    hR.set_visible(False)
+
+    savefig('boxcompare.png')
+    show()
+
+
+def player_classify():
+    df = pd.read_csv("players.csv")
+    df1 = df.loc[df['TotalGames'] >= 50]
+    df1['AvgIncBet'] = df1['BankIncBet'] / df1['TotalGames']
+    df1.sort_values(by=['AvgIncBet'], axis=0, inplace=True, ascending=False)
+    size = df1['Player'].count()
+    top50 = list(df1['Player'].head(int(size/2)))
+    top25 = list(df1['Player'].head(int(size/4)))
+    top10 = list(df1['Player'].head(int(size/10)))
+
+    low50 = list(df1['Player'].tail(int(size / 2)))
+    low25 = list(df1['Player'].tail(int(size / 4)))
+    low10 = list(df1['Player'].tail(int(size / 10)))
+    return top10, top25, top50, low10, low25, low50
+
+
+def handvalue_boxplot_stage(stage_name):
+    from pylab import plot, show, savefig, xlim, figure, \
+        hold, ylim, legend, boxplot, setp, axes
+
+    # function for setting the colors of the box plots pairs
+    def setBoxColors(bp):
+        setp(bp['boxes'][0], color='blue')
+        setp(bp['caps'][0], color='blue')
+        setp(bp['caps'][1], color='blue')
+        setp(bp['whiskers'][0], color='blue')
+        setp(bp['whiskers'][1], color='blue')
+        setp(bp['fliers'][0], markeredgecolor='blue')
+        setp(bp['medians'][0], color='blue')
+
+        setp(bp['boxes'][1], color='red')
+        setp(bp['caps'][2], color='red')
+        setp(bp['caps'][3], color='red')
+        setp(bp['whiskers'][2], color='red')
+        setp(bp['whiskers'][3], color='red')
+        setp(bp['fliers'][1], markeredgecolor='red')
+        setp(bp['medians'][1], color='red')
+
+    df = pd.read_csv("data.csv")
+    top10, top25, top50, low10, low25, low50 = player_classify()
+
+
+    A = [df[df['Player'].isin(top50)]['{}VCom'.format(stage_name)],
+         df[df['Player'].isin(low50)]['{}VCom'.format(stage_name)]]
+    B = [df[df['Player'].isin(top25)]['{}VCom'.format(stage_name)],
+         df[df['Player'].isin(low25)]['{}VCom'.format(stage_name)]]
+    C = [df[df['Player'].isin(top10)]['{}VCom'.format(stage_name)],
+         df[df['Player'].isin(low10)]['{}VCom'.format(stage_name)]]
+
+    fig = figure()
+    ax = axes()
+
+    # first boxplot pair
+    bp = boxplot(A, positions=[1, 2], widths=0.6)
+    setBoxColors(bp)
+
+    # second boxplot pair
+    bp = boxplot(B, positions=[4, 5], widths=0.6)
+    setBoxColors(bp)
+
+    # thrid boxplot pair
+    # Note, useed whis = range to let boxplot include all the data
+    bp = boxplot(C, positions=[7, 8], widths=0.6)
+    setBoxColors(bp)
+
+    # set axes limits and labels
+    xlim(0, 9)
+    ylim(0, 1)
+    ax.set_xticklabels(['50%', '25%', '10%'])
+    ax.set_xticks([1.5, 4.5, 7.5])
+
+    # draw temporary red and blue lines and use them to create a legend
+    hB, = plot([1, 1], 'b-')
+    hR, = plot([1, 1], 'r-')
+    legend((hB, hR), ('Top', 'Low'))
+    hB.set_visible(False)
+    hR.set_visible(False)
+    fig.canvas.set_window_title('{}_compare_plot'.format(stage_name))
+    savefig('handvalue_{}_player_compare_plot.png'.format(stage_name))
+    show()
+
+
 if __name__ == '__main__':
     pd.options.mode.chained_assignment = None
     # _clean()
@@ -401,8 +543,17 @@ if __name__ == '__main__':
     # analyze_player()
     # analyze_game()
     # tune_player()
-    tune_river_value_com()
+
+
+
+    # tune_river_value_com()
     # df = pd.read_csv("actions.csv")
     # df1 = df[df['Action'].str.contains('RiverVCom')]
     # for index, row in df1.iterrows():
     #     print(row['Action'].replace('RiverVCom','').replace(',','').replace(' ',''))
+
+    # handvalue_boxplot()
+    # player_classify()
+    handvalue_boxplot_stage('Flop')
+    handvalue_boxplot_stage('Turn')
+    handvalue_boxplot_stage('River')
