@@ -162,7 +162,6 @@ def optunity_tune_svm_rbf(X_train_all, y_train_all, x_test, y_test):
 
 
 def optunity_tune_svr_rbf(X_train_all, y_train_all):
-
     outer_cv = optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=3)
 
     def compute_mse_rbf_tuned(x_train, y_train, x_test, y_test):
@@ -186,44 +185,15 @@ def optunity_tune_svr_rbf(X_train_all, y_train_all):
 
     # wrap with outer cross-validation
     compute_mse_rbf_tuned = outer_cv(compute_mse_rbf_tuned)
-    return  compute_mse_rbf_tuned() 
+    return  compute_mse_rbf_tuned()
 
-    #
-    # def train1(x_train, y_train, x_test, y_test, para):
-    #     model = sklearn.svm.SVR(C=para[0], epsilon=para[1], gamma=10 ** para[2])
-    #     model.fit(x_train, y_train)
-    #
-    #     auc = model.score(x_test, y_test)
-    #     # decision_values = model.decision_function(x_test)
-    #     # auc = optunity.metrics.roc_auc(y_test, decision_values)
-    #
-    #     return auc
-    #
-    # @optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=5)
-    # def svr_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, epsilon, logGamma):
-    #     acc = train1(x_train, y_train, x_test, y_test, (C, epsilon, logGamma))
-    #     # print("train acc: {}".format(acc))
-    #     return acc
-    #
-    # optimal_rbf_pars, info, _ = optunity.maximize(svr_rbf_tuned_auroc, num_evals=50, C=[1, 100], epsilon=[0.05, 0.2],
-    #                                               gamma=[0, 50], pmap=optunity.pmap)
-    # df = optunity.call_log2dataframe(info.call_log)
-    # df = df.sort_values(by='value', ascending=False)[:10]
-    #
-    # df1 = df.apply(lambda x: pd.Series({'True Acc':
-    #                                         train1(X_train_all, y_train_all, x_test, y_test,
-    #                                                (x.loc['C'], x.loc['epsilon'], x.loc['logGamma']))
-    #                                     }), axis=1)
-    # df3 = pd.concat([df, df1], axis=1)
-    # return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['epsilon'],
-    #                                                          optimal_rbf_pars['logGamma']))
 
 
 def tune_player_svr(df, top, para=2):
     res = []
     for predictors in itertools.combinations(
             ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
-             'TurnVCom', 'RiverVCom', 'Aggressive'], para):
+             'TurnVCom', 'Aggressive'], para):
         X = df[list(predictors)]
         y = df.apply(lambda x: 1 if x.get('Player') in top else 0, axis=1)
         X_train = X.ix[:, :].values
@@ -262,42 +232,41 @@ def tune_player():
     df['AvgK'] = df['TotalK'] / df['TotalGames']
     df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
 
-    top10, top25, top50, low10, low25, low50 = player_classify()
+    top33, top50, low33, low50 = player_classify(type=1)
 
     df50 = df[df['Player'].isin(top50 + low50)]
-    df25 = df[df['Player'].isin(top25 + low25)]
-    # df10 = df[df['Player'].isin(top10 + low10)]
+    df33 = df[df['Player'].isin(top33 + low33)]
 
-    result50_para1 = tune_player_svr(df50, top50, para=1)
+    result50_para1 = tune_player_svc(df50, top50, para=1)
     plt.plot([x[1] for x in list(reversed(result50_para1))], 'b^', label='parameter1 top50%')
 
-    # result25_para1 = tune_player_svc(df25, top25, para=1)
-    # plt.plot([x[1] for x in list(reversed(result25_para1))], 'g^', label='parameter1 top25%')
+    result33_para1 = tune_player_svc(df33, top33, para=1)
+    plt.plot([x[1] for x in list(reversed(result33_para1))], 'g^', label='parameter1 top33%')
 
-    result50_para2 = tune_player_svr(df50, top50, para=2)
+    result50_para2 = tune_player_svc(df50, top50, para=2)
     plt.plot([x[1] for x in list(reversed(result50_para2))], 'bo', label='parameter2 top50%')
 
-    # result25_para2 = tune_player_svc(df25, top25, para=2)
-    # plt.plot([x[1] for x in list(reversed(result25_para2))], 'go', label='parameter2 top25%')
+    result33_para2 = tune_player_svc(df33, top33, para=2)
+    plt.plot([x[1] for x in list(reversed(result33_para2))], 'go', label='parameter2 top33%')
 
-    result50_para3 = tune_player_svr(df50, top50, para=3)
+    result50_para3 = tune_player_svc(df50, top50, para=3)
     plt.plot([x[1] for x in list(reversed(result50_para3))], 'b-', label='parameter3 top50%')
 
-    # result25_para3 = tune_player_svc(df25, top25, para=3)
-    # plt.plot([x[1] for x in list(reversed(result25_para3))], 'g-', label='parameter3 top25%')
+    result33_para3 = tune_player_svc(df33, top33, para=3)
+    plt.plot([x[1] for x in list(reversed(result33_para3))], 'g-', label='parameter3 top33%')
 
     plt.legend(loc=0)
     plt.title('Player Performance Classify Accuracy')
-    plt.savefig('Player Performance Classify Accuracy.png')
+    plt.savefig('Player Performance Classify Accuracy2.png')
     plt.show()
 
     print('top50%Winning Results: {}'.format(result50_para1))
     print('top50%Winning Results: {}'.format(result50_para2))
     print('top50%Winning Results: {}'.format(result50_para3))
 
-    # print('top25%Winning Results: {}'.format(result25_para1))
-    # print('top25%Winning Results: {}'.format(result25_para2))
-    # print('top25%Winning Results: {}'.format(result25_para3))
+    print('top33%Winning Results: {}'.format(result33_para1))
+    print('top33%Winning Results: {}'.format(result33_para2))
+    print('top33%Winning Results: {}'.format(result33_para3))
 
 
 def vif_analysis(df, col, threshold):
@@ -532,20 +501,28 @@ def handvalue_boxplot():
     show()
 
 
-def player_classify():
+def player_classify(type=0):
     df = pd.read_csv("players.csv")
     df1 = df.loc[df['TotalGames'] >= 50]
     df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalGames']
     df1.sort_values(by=['AvgIncBet'], axis=0, inplace=True, ascending=False)
     size = df1['Player'].count()
-    top50 = list(df1['Player'].head(int(size / 2)))
-    top25 = list(df1['Player'].head(int(size / 4)))
-    top10 = list(df1['Player'].head(int(size / 10)))
+    if type==0:
+        top50 = list(df1['Player'].head(int(size / 2)))
+        top25 = list(df1['Player'].head(int(size / 4)))
+        top10 = list(df1['Player'].head(int(size / 10)))
 
-    low50 = list(df1['Player'].tail(int(size / 2)))
-    low25 = list(df1['Player'].tail(int(size / 4)))
-    low10 = list(df1['Player'].tail(int(size / 10)))
-    return top10, top25, top50, low10, low25, low50
+        low50 = list(df1['Player'].tail(int(size / 2)))
+        low25 = list(df1['Player'].tail(int(size / 4)))
+        low10 = list(df1['Player'].tail(int(size / 10)))
+        return top10, top25, top50, low10, low25, low50
+    else:
+        top50 = list(df1['Player'].head(int(size / 2)))
+        top33 = list(df1['Player'].head(int(size / 3)))
+
+        low50 = list(df1['Player'].tail(int(size / 2)))
+        low33 = list(df1['Player'].tail(int(size / 3)))
+        return top33, top50, low33, low50
 
 
 def handvalue_boxplot_stage(stage_name):
