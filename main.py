@@ -137,90 +137,167 @@ def _player():
 
 def optunity_tune_svm_rbf(X_train_all, y_train_all, x_test, y_test):
     def train1(x_train, y_train, x_test, y_test, para):
-        model = sklearn.svm.SVC(C=para[0], gamma=10 ** para[1])
+        model = sklearn.svm.SVC(kernel='rbf', C=para[0], gamma=10 ** para[1])
         model.fit(x_train, y_train)
         decision_values = model.decision_function(x_test)
         auc = optunity.metrics.roc_auc(y_test, decision_values)
         return auc
 
     @optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=5)
-    def svm_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, logGamma):
-        acc = train1(x_train, y_train, x_test, y_test, (C, logGamma))
+    def svm_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, loggamma):
+        acc = train1(x_train, y_train, x_test, y_test, (C, loggamma))
         # print("train acc: {}".format(acc))
         return acc
 
-    optimal_rbf_pars, info, _ = optunity.maximize(svm_rbf_tuned_auroc, num_evals=50, C=[0, 10], logGamma=[-5, 0],
+    optimal_rbf_pars, info, _ = optunity.maximize(svm_rbf_tuned_auroc, num_evals=50, C=[0, 10], loggamma=[-5, 0],
                                                   pmap=optunity.pmap)
     df = optunity.call_log2dataframe(info.call_log)
     df = df.sort_values(by='value', ascending=False)[:10]
-
     df1 = df.apply(lambda x: pd.Series({'True Acc':
                                             train1(X_train_all, y_train_all, x_test, y_test,
-                                                   (x.loc['C'], x.loc['logGamma']))
+                                                   (x.loc['C'], x.loc['loggamma']))
                                         }), axis=1)
     df3 = pd.concat([df, df1], axis=1)
-    print(df3)
-    return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['logGamma']))
+    return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['loggamma']))
 
 
-def optunity_tune_svr_rbf(X_train_all, y_train_all, x_test, y_test):
-    def train1(x_train, y_train, x_test, y_test, para):
-        model = sklearn.svm.SVR(C=para[0], epsilon=para[1], gamma=10 ** para[2])
-        model.fit(x_train, y_train)
+def optunity_tune_svr_rbf(X_train_all, y_train_all):
 
-        auc = model.score(x_test, y_test)
-        # decision_values = model.decision_function(x_test)
-        # auc = optunity.metrics.roc_auc(y_test, decision_values)
+    outer_cv = optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=3)
 
-        return auc
+    def compute_mse_rbf_tuned(x_train, y_train, x_test, y_test):
+        """Computes MSE of an SVR with RBF kernel and optimized hyperparameters."""
 
-    @optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=5)
-    def svr_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, epsilon, logGamma):
-        acc = train1(x_train, y_train, x_test, y_test, (C, epsilon, logGamma))
-        print("train acc: {}".format(acc))
-        return acc
+        # define objective function for tuning
+        @optunity.cross_validated(x=x_train, y=y_train, num_iter=2, num_folds=5)
+        def tune_cv(x_train, y_train, x_test, y_test, C, gamma):
+            model = sklearn.svm.SVR(C=C, gamma=gamma)
+            model.fit(x_train, y_train)
+            predictions = model.predict(x_test)
+            return optunity.metrics.mse(y_test, predictions)
 
-    optimal_rbf_pars, info, _ = optunity.maximize(svr_rbf_tuned_auroc, num_evals=50, C=[0, 10], epsilon=[0.05, 0.2],
-                                                  logGamma=[-5, 0], pmap=optunity.pmap)
-    df = optunity.call_log2dataframe(info.call_log)
-    df = df.sort_values(by='value', ascending=False)[:10]
+        # optimize parameters
+        optimal_pars, _, _ = optunity.minimize(tune_cv, 150, C=[1, 100], gamma=[0, 50], pmap=optunity.pmap)
+        print("optimal hyperparameters: " + str(optimal_pars))
+        tuned_model = sklearn.svm.SVR(**optimal_pars)
+        tuned_model.fit(x_train, y_train)
+        predictions = tuned_model.predict(x_test)
+        return optunity.metrics.mse(y_test, predictions)
 
-    df1 = df.apply(lambda x: pd.Series({'True Acc':
-                                            train1(X_train_all, y_train_all, x_test, y_test,
-                                                   (x.loc['C'], x.loc['epsilon'], x.loc['logGamma']))
-                                        }), axis=1)
-    df3 = pd.concat([df, df1], axis=1)
-    print(df3)
-    return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['epsilon'],
-                                                             optimal_rbf_pars['logGamma']))
+    # wrap with outer cross-validation
+    compute_mse_rbf_tuned = outer_cv(compute_mse_rbf_tuned)
+    return  compute_mse_rbf_tuned() 
+
+    #
+    # def train1(x_train, y_train, x_test, y_test, para):
+    #     model = sklearn.svm.SVR(C=para[0], epsilon=para[1], gamma=10 ** para[2])
+    #     model.fit(x_train, y_train)
+    #
+    #     auc = model.score(x_test, y_test)
+    #     # decision_values = model.decision_function(x_test)
+    #     # auc = optunity.metrics.roc_auc(y_test, decision_values)
+    #
+    #     return auc
+    #
+    # @optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=5)
+    # def svr_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, epsilon, logGamma):
+    #     acc = train1(x_train, y_train, x_test, y_test, (C, epsilon, logGamma))
+    #     # print("train acc: {}".format(acc))
+    #     return acc
+    #
+    # optimal_rbf_pars, info, _ = optunity.maximize(svr_rbf_tuned_auroc, num_evals=50, C=[1, 100], epsilon=[0.05, 0.2],
+    #                                               gamma=[0, 50], pmap=optunity.pmap)
+    # df = optunity.call_log2dataframe(info.call_log)
+    # df = df.sort_values(by='value', ascending=False)[:10]
+    #
+    # df1 = df.apply(lambda x: pd.Series({'True Acc':
+    #                                         train1(X_train_all, y_train_all, x_test, y_test,
+    #                                                (x.loc['C'], x.loc['epsilon'], x.loc['logGamma']))
+    #                                     }), axis=1)
+    # df3 = pd.concat([df, df1], axis=1)
+    # return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['epsilon'],
+    #                                                          optimal_rbf_pars['logGamma']))
+
+
+def tune_player_svr(df, top, para=2):
+    res = []
+    for predictors in itertools.combinations(
+            ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+             'TurnVCom', 'RiverVCom', 'Aggressive'], para):
+        X = df[list(predictors)]
+        y = df.apply(lambda x: 1 if x.get('Player') in top else 0, axis=1)
+        X_train = X.ix[:, :].values
+        y_train = y.ix[:, ].values
+        result = (predictors, optunity_tune_svr_rbf(X_train, y_train))
+        print(result)
+        res.append(result)
+    return sorted(res, key=lambda x: x[1], reverse=True)
+
+
+
+def tune_player_svc(df, top, para=2):
+    res = []
+    for predictors in itertools.combinations(
+            ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+             'TurnVCom', 'RiverVCom', 'Aggressive'], para):
+        X = df[list(predictors)]
+        y = df.apply(lambda x: 1 if x.get('Player') in top else 0, axis=1)
+        X_train = X.ix[:len(df.index) / 2 - 1, :].values
+        y_train = y.ix[:len(df.index) / 2 - 1, ].values
+        X_test = X.ix[len(df.index) / 2:, :].values
+        y_test = y.ix[len(df.index) / 2:, ].values
+        result = (predictors, optunity_tune_svm_rbf(X_train, y_train, X_test, y_test))
+        print(result)
+        res.append(result)
+    return sorted(res, key=lambda x: x[1], reverse=True)
 
 
 def tune_player():
     df = pd.read_csv('players.csv')
-    df1 = df.loc[df['TotalGames'] >= 5]
-    df1['AvgIncBet'] = df1['BankIncBet'] / df1['TotalGames']
-    avg = df1.loc[df['Player'] == 'AVERAGE']
-    threshold = float(avg.get('AvgIncBet'))
-    df1['AvgBet'] = df1['TotalBet'] / df1['TotalGames']
-    df1['AvgB'] = df1['TotalB'] / df1['TotalGames']
-    df1['AvgR'] = df1['TotalR'] / df1['TotalGames']
-    df1['AvgC'] = df1['TotalC'] / df1['TotalGames']
-    df1['AvgK'] = df1['TotalK'] / df1['TotalGames']
+    df['AvgIncBet'] = (df['BankIncBet'] - df['TotalBet']) / df['TotalGames']
+    df['AvgBet'] = df['TotalBet'] / df['TotalGames']
+    df['AvgB'] = df['TotalB'] / df['TotalGames']
+    df['AvgR'] = df['TotalR'] / df['TotalGames']
+    df['AvgC'] = df['TotalC'] / df['TotalGames']
+    df['AvgK'] = df['TotalK'] / df['TotalGames']
+    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
 
-    # X = df1[['AvgB', 'AvgR', 'AvgC', 'AvgK', 'PreflopVCom', 'RiverVCom', 'FlopVSim', 'TurnVSim', 'RiverVSim']]
-    # X = df1[['AvgR', 'AvgC', 'RiverVCom', 'FlopVSim']]
-    res = []
-    for predictors in itertools.combinations(
-            ['AvgB', 'AvgR', 'AvgC', 'AvgK', 'PreflopVCom', 'RiverVCom', 'FlopVSim', 'TurnVSim', 'RiverVSim'], 2):
-        print(predictors)
-        X = df1[list(predictors)]
-        y = df1.apply(lambda x: 1 if x.get('AvgIncBet') > threshold else 0, axis=1)
-        X_train = X.ix[:699, :].values
-        y_train = y.ix[:699, ].values
-        X_test = X.ix[700:, :].values
-        y_test = y.ix[700:, ].values
-        res.append((predictors, optunity_tune_svm_rbf(X_train, y_train, X_test, y_test)))
-    print(sorted(res, key=lambda x: x[1], reverse=True))
+    top10, top25, top50, low10, low25, low50 = player_classify()
+
+    df50 = df[df['Player'].isin(top50 + low50)]
+    df25 = df[df['Player'].isin(top25 + low25)]
+    # df10 = df[df['Player'].isin(top10 + low10)]
+
+    result50_para1 = tune_player_svr(df50, top50, para=1)
+    plt.plot([x[1] for x in list(reversed(result50_para1))], 'b^', label='parameter1 top50%')
+
+    # result25_para1 = tune_player_svc(df25, top25, para=1)
+    # plt.plot([x[1] for x in list(reversed(result25_para1))], 'g^', label='parameter1 top25%')
+
+    result50_para2 = tune_player_svr(df50, top50, para=2)
+    plt.plot([x[1] for x in list(reversed(result50_para2))], 'bo', label='parameter2 top50%')
+
+    # result25_para2 = tune_player_svc(df25, top25, para=2)
+    # plt.plot([x[1] for x in list(reversed(result25_para2))], 'go', label='parameter2 top25%')
+
+    result50_para3 = tune_player_svr(df50, top50, para=3)
+    plt.plot([x[1] for x in list(reversed(result50_para3))], 'b-', label='parameter3 top50%')
+
+    # result25_para3 = tune_player_svc(df25, top25, para=3)
+    # plt.plot([x[1] for x in list(reversed(result25_para3))], 'g-', label='parameter3 top25%')
+
+    plt.legend(loc=0)
+    plt.title('Player Performance Classify Accuracy')
+    plt.savefig('Player Performance Classify Accuracy.png')
+    plt.show()
+
+    print('top50%Winning Results: {}'.format(result50_para1))
+    print('top50%Winning Results: {}'.format(result50_para2))
+    print('top50%Winning Results: {}'.format(result50_para3))
+
+    # print('top25%Winning Results: {}'.format(result25_para1))
+    # print('top25%Winning Results: {}'.format(result25_para2))
+    # print('top25%Winning Results: {}'.format(result25_para3))
 
 
 def vif_analysis(df, col, threshold):
@@ -315,7 +392,7 @@ def analyze_player():
     # df1 = df.assign(f=df['TotalR']/df['TotalGames']).sort_values(by='f', ascending=False).drop('f', axis=1)
     # print df1.head(10)
     df1 = df.loc[df['TotalGames'] >= 5]
-    df1['AvgIncBet'] = df1['BankIncBet'] / df1['TotalGames']
+    df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalGames']
 
     avg = df1.loc[df['Player'] == 'AVERAGE']
     threshold = float(avg.get('AvgIncBet'))
@@ -449,20 +526,21 @@ def handvalue_boxplot():
     legend((hB, hR), ('Simple', 'Complex'))
     hB.set_visible(False)
     hR.set_visible(False)
-
-    savefig('boxcompare.png')
+    fig.canvas.set_window_title('handvalue_stage_plot')
+    plt.title('handvalue_stage_plot')
+    savefig('handvalue_stage_plot.png')
     show()
 
 
 def player_classify():
     df = pd.read_csv("players.csv")
     df1 = df.loc[df['TotalGames'] >= 50]
-    df1['AvgIncBet'] = df1['BankIncBet'] / df1['TotalGames']
+    df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalGames']
     df1.sort_values(by=['AvgIncBet'], axis=0, inplace=True, ascending=False)
     size = df1['Player'].count()
-    top50 = list(df1['Player'].head(int(size/2)))
-    top25 = list(df1['Player'].head(int(size/4)))
-    top10 = list(df1['Player'].head(int(size/10)))
+    top50 = list(df1['Player'].head(int(size / 2)))
+    top25 = list(df1['Player'].head(int(size / 4)))
+    top10 = list(df1['Player'].head(int(size / 10)))
 
     low50 = list(df1['Player'].tail(int(size / 2)))
     low25 = list(df1['Player'].tail(int(size / 4)))
@@ -494,7 +572,6 @@ def handvalue_boxplot_stage(stage_name):
 
     df = pd.read_csv("data.csv")
     top10, top25, top50, low10, low25, low50 = player_classify()
-
 
     A = [df[df['Player'].isin(top50)]['{}VCom'.format(stage_name)],
          df[df['Player'].isin(low50)]['{}VCom'.format(stage_name)]]
@@ -532,8 +609,33 @@ def handvalue_boxplot_stage(stage_name):
     hB.set_visible(False)
     hR.set_visible(False)
     fig.canvas.set_window_title('{}_compare_plot'.format(stage_name))
+    plt.title('{}_compare_plot'.format(stage_name))
     savefig('handvalue_{}_player_compare_plot.png'.format(stage_name))
     show()
+
+
+def profit_plot():
+    df = pd.read_csv('players.csv')
+    df1 = df.loc[df['TotalGames'] >= 50]
+    df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
+
+    print(sum(df1['AvgIncBet']) / len(df1.index))
+    print(numpy.std(df1['AvgIncBet']))
+
+    df1['AvgBet'] = df1['TotalBet'] / df1['TotalGames']
+
+    plt.plot(df1['AvgIncBet'], df1['AvgBet'], 'ro')
+    plt.ylabel('AvgBet')
+    plt.xlabel('AvgIncBet')
+    plt.title('AvgBet-AvgIncBet PerGame')
+    plt.show()
+    plt.savefig('AvgBet-AvgIncBet PerGame.png')
+
+    plt.hist(df1['AvgIncBet'], bins=20)
+    plt.title('AvgIncBet PerGame')
+    plt.ylabel('AvgIncBet')
+    plt.show()
+    plt.savefig('AvgIncBet PerGame')
 
 
 if __name__ == '__main__':
@@ -542,18 +644,10 @@ if __name__ == '__main__':
     # _player()
     # analyze_player()
     # analyze_game()
-    # tune_player()
 
-
-
-    # tune_river_value_com()
-    # df = pd.read_csv("actions.csv")
-    # df1 = df[df['Action'].str.contains('RiverVCom')]
-    # for index, row in df1.iterrows():
-    #     print(row['Action'].replace('RiverVCom','').replace(',','').replace(' ',''))
-
+    tune_player()
     # handvalue_boxplot()
-    # player_classify()
-    handvalue_boxplot_stage('Flop')
-    handvalue_boxplot_stage('Turn')
-    handvalue_boxplot_stage('River')
+    # handvalue_boxplot_stage('Flop')
+    # handvalue_boxplot_stage('Turn')
+    # handvalue_boxplot_stage('River')
+    # profit_plot()
