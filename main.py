@@ -201,7 +201,7 @@ def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
     df = df.sort_values(by='value', ascending=False)[:10]
     df1 = df.apply(lambda x: pd.Series({'True Acc':
                                             train1(X_train_all, y_train_all, x_test, y_test,
-                                                   (x.loc['C'], x.loc['loggamma']))
+                                                   (x['C'], x['loggamma']))
                                         }), axis=1)
     df3 = pd.concat([df, df1], axis=1)
     return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['loggamma']))
@@ -279,7 +279,7 @@ def tune_player_svr(df, top, para=2):
 def tune_player_svc(df, top, para=2):
     res = []
     for predictors in itertools.combinations(
-            ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+            ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom', 'RiverVCom',
              'TurnVCom', 'Aggressive'], para):
         X = df[list(predictors)]
         y = df.apply(lambda x: 1 if x.get('Player') in top else 0, axis=1)
@@ -317,6 +317,24 @@ def tune_player_multi_svc():
     result = optunity_tune_multi_svc_rbf(X_train, y_train, X_test, y_test)
     print(result)
 
+
+def tune_player_all():
+    df = pd.read_csv('players.csv')
+    df['AvgIncBet'] = (df['BankIncBet'] - df['TotalBet']) / df['TotalGames']
+    df['AvgBet'] = df['TotalBet'] / df['TotalGames']
+    df['AvgB'] = df['TotalB'] / df['TotalGames']
+    df['AvgR'] = df['TotalR'] / df['TotalGames']
+    df['AvgC'] = df['TotalC'] / df['TotalGames']
+    df['AvgK'] = df['TotalK'] / df['TotalGames']
+    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
+
+    top33, top50, low33, low50 = player_classify(type=1)
+
+    df50 = df[df['Player'].isin(top50 + low50)]
+    res = []
+    for i in range(1, 13):
+        res.append( tune_player_svc(df50, top50, para=i) )
+    print('top50%Winning Results: {}'.format(res))
 
 
 def tune_player():
@@ -712,6 +730,7 @@ def profit_plot():
     plt.show()
     plt.savefig('AvgIncBet PerGame')
 
+
 def aggresive_analysis():
     df = pd.read_csv('players.csv')
     df1 = df.loc[df['TotalGames'] >= 50]
@@ -745,6 +764,7 @@ def aggresive_analysis():
     print(df1.head())
     print("Least Aggr")
     print(df1.tail())
+
 
 def totalgame_analysis():
     df = pd.read_csv('players.csv')
@@ -788,8 +808,8 @@ if __name__ == '__main__':
     # analyze_player()
     # analyze_game()
 
-    # tune_player()
-    handvalue_boxplot()
+    tune_player()
+    # handvalue_boxplot()
     # handvalue_boxplot_stage('Flop')
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
