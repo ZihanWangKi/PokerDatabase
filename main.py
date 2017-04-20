@@ -166,7 +166,7 @@ def tune_player_nb():
 
     _, top, _, low = player_classify(type=1)
 
-    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom', 'RiverVCom',
              'TurnVCom', 'Aggressive']
     res = []
     for L in range(1, all_predictors.__len__() + 1):
@@ -589,11 +589,11 @@ def handvalue_boxplot():
     # draw temporary red and blue lines and use them to create a legend
     hB, = plot([1, 1], 'b-')
     hR, = plot([1, 1], 'r-')
-    legend((hB, hR), ('Simple', 'Complex'))
+    legend((hB, hR), ('Simple', 'Effective'))
     hB.set_visible(False)
     hR.set_visible(False)
     fig.canvas.set_window_title('handvalue_stage_plot')
-    plt.title('handvalue_stage_plot')
+    plt.title('Two types hand value at differnet stage')
     savefig('handvalue_stage_plot.png')
     show()
 
@@ -787,7 +787,7 @@ if __name__ == '__main__':
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
     # profit_plot()
-    # aggresive_analysis()
+    aggresive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
     # tune_player_nb()

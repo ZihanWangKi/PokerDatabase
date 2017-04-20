@@ -1,0 +1,6 @@
+[0.7297466374726306, ['AvgB', 'AvgK', 'FlopVSim', 'RiverVCom']]
+[0.7283494943175894, ['AvgK', 'RiverVCom']]
+[0.7253883849442185, ['AvgB', 'AvgK', 'RiverVCom', 'TurnVCom']]
+[0.721061411740173, ['AvgC', 'AvgK', 'RiverVCom']]
+[0.7196538421436763, ['AvgB', 'AvgC', 'AvgK', 'RiverVCom', 'TurnVCom']]
+[0.7182775518715463, ['AvgB', 'AvgR', 'AvgK', 'RiverVCom', 'TurnVCom']]
