@@ -137,20 +137,24 @@ def _player():
 
 
 def naive_bayes_clas(X_all, y_all):
-    def train1(x_train, y_train, x_test, y_test):
-        nbm = nb.GaussianNB()
+    def train1(x_train, y_train, x_test, y_test, alpha):
+        nbm = nb.MultinomialNB(alpha=alpha)
         model = nbm.fit(x_train, y_train)
         p_label = model.predict(x_test)
         acc_arr = [1 for i in range(len(p_label)) if p_label[i] == y_test[i]]
         acc = float(sum(acc_arr)) / len(p_label)
         return acc
 
-    @optunity.cross_validated(x=X_all, y=y_all, num_folds=5)
-    def naive_tune(x_train, y_train, x_test, y_test):
-        acc = train1(x_train, y_train, x_test, y_test)
+    @optunity.cross_validated(x=X_all, y=y_all, num_folds=10)
+    def naive_tune(x_train, y_train, x_test, y_test, alpha):
+        acc = train1(x_train, y_train, x_test, y_test, alpha)
         return acc
 
-    return naive_tune()
+    optimal_pars, info, _ = optunity.maximize(naive_tune, num_evals=50, alpha=[0, 10],
+                                              pmap=optunity.pmap)
+    df = optunity.call_log2dataframe(info.call_log)
+    df = df.sort_values(by='value', ascending=False)[:10]
+    return list(df['value'])[0]
 
 
 def tune_player_nb():
@@ -162,23 +166,22 @@ def tune_player_nb():
     df['AvgR'] = df['TotalR'] / df['TotalGames']
     df['AvgC'] = df['TotalC'] / df['TotalGames']
     df['AvgK'] = df['TotalK'] / df['TotalGames']
-    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
+    df['Aggressive'] = (df['TotalC'] + df['TotalB'] + df['TotalR']) / (df['TotalK'])
 
-    _, top, _, low = player_classify(type=1)
-
-    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom', 'RiverVCom',
-             'TurnVCom', 'Aggressive']
+    top10, top25, top50, low10, low25, low50 = player_classify()
+    df10 = df[df['Player'].isin(top10 + low10)]
+    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'Aggressive']
     res = []
     for L in range(1, all_predictors.__len__() + 1):
         for predictors in itertools.combinations(all_predictors, L):
-            X = df[list(predictors)]
-            y = df.apply(lambda x: 1 if x.get('Player') in top else -1, axis=1)
+            X = df10[list(predictors)]
+            y = df10.apply(lambda x: 1 if x.get('Player') in top10 else -1, axis=1)
             X_all = X.values
             y_all = y.values
             result = naive_bayes_clas(X_all, y_all)
             res.append([result, list(predictors)])
             print(result)
-    print(sorted(res, key=lambda x : x[0], reverse=True))
+    print(sorted(res, key=lambda x: x[0], reverse=True))
 
 
 def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
@@ -201,10 +204,11 @@ def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
     df = df.sort_values(by='value', ascending=False)[:10]
     df1 = df.apply(lambda x: pd.Series({'True Acc':
                                             train1(X_train_all, y_train_all, x_test, y_test,
-                                                   (x['C'], x['loggamma']))
+                                                   (max(0.1, x['C']), x['loggamma']))
                                         }), axis=1)
     df3 = pd.concat([df, df1], axis=1)
-    return train1(X_train_all, y_train_all, x_test, y_test, (optimal_rbf_pars['C'], optimal_rbf_pars['loggamma']))
+    return train1(X_train_all, y_train_all, x_test, y_test,
+                  (max(0.1, optimal_rbf_pars['C']), optimal_rbf_pars['loggamma']))
 
 
 def optunity_tune_multi_svc_rbf(X_train_all, y_train_all, x_test, y_test):
@@ -302,7 +306,7 @@ def tune_player_multi_svc():
     df['AvgR'] = df['TotalR'] / df['TotalGames']
     df['AvgC'] = df['TotalC'] / df['TotalGames']
     df['AvgK'] = df['TotalK'] / df['TotalGames']
-    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
+    df['Aggressive'] = (df['TotalC'] + df['TotalB'] + df['TotalR']) / (df['TotalK'])
 
     top, _, low, _ = player_classify(type=1)
 
@@ -326,14 +330,14 @@ def tune_player_all():
     df['AvgR'] = df['TotalR'] / df['TotalGames']
     df['AvgC'] = df['TotalC'] / df['TotalGames']
     df['AvgK'] = df['TotalK'] / df['TotalGames']
-    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
+    df['Aggressive'] = (df['TotalC'] + df['TotalB'] + df['TotalR']) / (df['TotalK'])
 
     top33, top50, low33, low50 = player_classify(type=1)
 
     df50 = df[df['Player'].isin(top50 + low50)]
     res = []
     for i in range(1, 13):
-        res.append( tune_player_svc(df50, top50, para=i) )
+        res.append(tune_player_svc(df50, top50, para=i))
     print('top50%Winning Results: {}'.format(res))
 
 
@@ -345,9 +349,9 @@ def tune_player():
     df['AvgR'] = df['TotalR'] / df['TotalGames']
     df['AvgC'] = df['TotalC'] / df['TotalGames']
     df['AvgK'] = df['TotalK'] / df['TotalGames']
-    df['Aggressive'] = (df['TotalB'] + df['TotalR']) / (df['TotalC'] + df['TotalK'])
+    df['Aggressive'] = (df['TotalC'] + df['TotalB'] + df['TotalR']) / (df['TotalK'])
 
-    top33, top50, low33, low50 = player_classify(type=1)
+    top10, top33, top50, low10, low33, low50 = player_classify()
 
     df50 = df[df['Player'].isin(top50 + low50)]
     df33 = df[df['Player'].isin(top33 + low33)]
@@ -608,11 +612,11 @@ def handvalue_boxplot():
     # draw temporary red and blue lines and use them to create a legend
     hB, = plot([1, 1], 'b-')
     hR, = plot([1, 1], 'r-')
-    legend((hB, hR), ('Simple', 'Effective'))
+    legend((hB, hR), ('Basic', 'Effective'))
     hB.set_visible(False)
     hR.set_visible(False)
     fig.canvas.set_window_title('handvalue_stage_plot')
-    plt.title('Two types hand value at differnet stage')
+    plt.title('Two types of hand value at different stage')
     savefig('handvalue_stage_plot.png')
     show()
 
@@ -712,31 +716,29 @@ def profit_plot():
     df1 = df.loc[df['TotalGames'] >= 50]
     df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
 
+    print("average")
     print(sum(df1['AvgIncBet']) / len(df1.index))
+
+    print("sd")
     print(numpy.std(df1['AvgIncBet']))
 
-    df1['AvgBet'] = df1['TotalBet'] / df1['TotalGames']
-
-    plt.plot(df1['AvgIncBet'], df1['AvgBet'], 'ro')
-    plt.ylabel('AvgBet')
-    plt.xlabel('AvgIncBet')
-    plt.title('AvgBet-AvgIncBet PerGame')
-    plt.show()
-    plt.savefig('AvgBet-AvgIncBet PerGame.png')
-
     plt.hist(df1['AvgIncBet'], bins=20)
-    plt.title('AvgIncBet PerGame')
-    plt.ylabel('AvgIncBet')
+    plt.title('Winning Ability of Players')
+    plt.ylabel('Average Profit/Game')
     plt.show()
-    plt.savefig('AvgIncBet PerGame')
+
+    print("Win most")
+    print(df1.head())
+    print("Lose Most")
+    print(df1.tail())
 
 
-def aggresive_analysis():
+def aggressive_analysis():
     df = pd.read_csv('players.csv')
     df1 = df.loc[df['TotalGames'] >= 50]
     df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
 
-    df1['Aggressive'] = (df1['TotalB'] + df1['TotalR']) / (df1['TotalC'] + df1['TotalK'])
+    df1['Aggressive'] = (df1['TotalC'] + df1['TotalB'] + df1['TotalR']) / (df1['TotalK'])
     df1 = df1.sort_values(by='Aggressive', ascending=False)
     top10, top25, top50, low10, low25, low50 = player_classify()
 
@@ -752,7 +754,6 @@ def aggresive_analysis():
     _low = list(df_low['Aggressive'].values)
     plt.plot(_top, 'ro', label='Winning Players')
     plt.plot(_low, 'bo', label='Losing Players')
-    plt.title('Aggressiveness')
     plt.legend(loc=0)
     plt.ylabel("Aggressiveness")
     plt.show()
@@ -764,6 +765,25 @@ def aggresive_analysis():
     print(df1.head())
     print("Least Aggr")
     print(df1.tail())
+
+
+def X_vs_profit(X):
+    df = pd.read_csv('players.csv')
+    df1 = df.loc[df['TotalGames'] >= 50]
+    df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
+    df1['Aggressive'] = (df1['TotalC'] + df1['TotalB'] + df1['TotalR']) / (df1['TotalK'])
+
+    df1 = df1.sort_values(by='AvgIncBet', ascending=True)
+
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111)
+    ax.set_title('{}-Profit'.format(X))
+
+    plt.plot(df1['AvgIncBet'], df1[X], 'ro')
+    plt.ylabel(X)
+    plt.xlabel("Profit")
+    plt.show()
 
 
 def totalgame_analysis():
@@ -808,13 +828,15 @@ if __name__ == '__main__':
     # analyze_player()
     # analyze_game()
 
-    tune_player()
+    # tune_player()
     # handvalue_boxplot()
     # handvalue_boxplot_stage('Flop')
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
     # profit_plot()
-    # aggresive_analysis()
+    # aggressive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
     # tune_player_nb()
+    # tune_player_all()
+    X_vs_profit('Aggressive')

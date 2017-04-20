@@ -1,0 +1,10 @@
+We focused on the difference between good players and bad players. Namely, what made good players good?
+
+RiverVCom-Profit
+
+Agressiveness-Profit
+Agressiveness within good, bad players
+
+NB: 0.65274725274725276, ['AvgB', 'AvgR', 'AvgK', 'Aggressive']
+SVM: 
+
