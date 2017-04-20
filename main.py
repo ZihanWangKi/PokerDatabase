@@ -585,6 +585,7 @@ def handvalue_boxplot():
     ylim(0, 1)
     ax.set_xticklabels(['Flop', 'Turn', 'River'])
     ax.set_xticks([1.5, 4.5, 7.5])
+    ax.set_ylabel('Hand Value')
 
     # draw temporary red and blue lines and use them to create a legend
     hB, = plot([1, 1], 'b-')
@@ -723,12 +724,18 @@ def aggresive_analysis():
     df_top = df1[df1['Player'].isin(top10)]
     df_low = df1[df1['Player'].isin(low10)]
 
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111)
+    ax.set_title('axes title')
+
     _top = list(df_top['Aggressive'].values)
     _low = list(df_low['Aggressive'].values)
     plt.plot(_top, 'ro', label='Winning Players')
     plt.plot(_low, 'bo', label='Losing Players')
     plt.title('Aggressiveness')
     plt.legend(loc=0)
+    plt.ylabel("Aggressiveness")
     plt.show()
     plt.savefig('Aggressive.png')
 
@@ -782,12 +789,12 @@ if __name__ == '__main__':
     # analyze_game()
 
     # tune_player()
-    # handvalue_boxplot()
+    handvalue_boxplot()
     # handvalue_boxplot_stage('Flop')
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
     # profit_plot()
-    aggresive_analysis()
+    # aggresive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
     # tune_player_nb()
