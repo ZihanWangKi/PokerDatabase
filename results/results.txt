@@ -1,17 +1,20 @@
 What made good players good?
 
-
-Naive Bayes, Logistic regression, Support Vector Machine.
-
-'AvgB', 'AvgC', 'AvgK', 0.73, 0.69, 8.25, 0.90
-'AvgB', 'AvgC', 0.73, 0.67, 4.25, 0.17
-'AvgB', 'Aggressive', 0.73, 0.64, 2.00, 0.30
-'AvgB', 'AvgK', 'Aggressive', 0.72, 0.69, 2.96, 0.91
-
-
 RiverVCom-Profit
 Agressiveness-Profit
 Agressiveness within good, bad players
 
+We tried to classify the Winning players and losing players.
+Models: Naive Bayes, Logistic regression, Support Vector Machine.
+Below we elaborate on SVMs.
 
+We devided the dataset into testing set(30%) and training set(70%). Within the training set, we did a 10 fold cross validation to tune the parameters for a Support Vector Classifer. Record the results:
+Predictors, Score In train, Score In test, C, Gamma
+('AvgB', 'AvgC', 'AvgK'), 0.73, 0.69, 8.25, 0.90
+('AvgB', 'AvgC'), 0.73, 0.67, 4.25, 0.17
+('AvgB', 'Aggressive'), 0.73, 0.64, 2.00, 0.30
+('AvgB', 'AvgK', 'Aggressive'), 0.72, 0.69, 2.96, 0.91
+
+
+*parameters tuned(For a Gaussain Kernal): C[0, 10], gamma[0.00001, 1], predictors to choose (At most 4 from AvgBet, AvgB, AvgR, AvgC, AvgK, Aggressive)
 
