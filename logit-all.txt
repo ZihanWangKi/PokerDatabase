@@ -1,0 +1,2 @@
+(('AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom', 'RiverVCom', 'TurnVCom', 'Aggressive'), 0.76947368421052631, 0.80952380952380953)
+
