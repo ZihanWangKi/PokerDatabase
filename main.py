@@ -537,7 +537,7 @@ def profit_plot():
 
     plt.hist(df1['AvgIncBet'], bins=20)
     plt.title('Winning Ability of Players')
-    plt.ylabel('Average Profit/Game')
+    plt.xlabel('Profit')
     plt.show()
 
     print("Win most")
@@ -643,13 +643,13 @@ if __name__ == '__main__':
     # handvalue_boxplot_stage('Flop')
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
-    # profit_plot()
+    profit_plot()
     # aggressive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
     # X_vs_profit('Aggressive')
 
-    tune_player()
+    # tune_player()
     # tune_player_nb()
     # tune_player_logit()
     # tune_player_all()
