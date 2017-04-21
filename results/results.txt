@@ -1,10 +1,17 @@
-We focused on the difference between good players and bad players. Namely, what made good players good?
+What made good players good?
+
+
+Naive Bayes, Logistic regression, Support Vector Machine.
+
+'AvgB', 'AvgC', 'AvgK', 0.73, 0.69, 8.25, 0.90
+'AvgB', 'AvgC', 0.73, 0.67, 4.25, 0.17
+'AvgB', 'Aggressive', 0.73, 0.64, 2.00, 0.30
+'AvgB', 'AvgK', 'Aggressive', 0.72, 0.69, 2.96, 0.91
+
 
 RiverVCom-Profit
-
 Agressiveness-Profit
 Agressiveness within good, bad players
 
-NB: 0.65274725274725276, ['AvgB', 'AvgR', 'AvgK', 'Aggressive']
-SVM: 
+
 

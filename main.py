@@ -270,7 +270,7 @@ def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
                                                    (x['C'], x['loggamma']))
                                         }), axis=1)
     df3 = pd.concat([df, df1], axis=1)
-    return df3['value'].iloc[0], df3['True Acc'].iloc[0]
+    return df3['value'].iloc[0], df3['True Acc'].iloc[0], df3['C'].iloc[0], df3['loggamma'].iloc[0]
 
 
 def tune_player_svc(df, top, para=2, clump=False):
@@ -286,7 +286,7 @@ def tune_player_svc(df, top, para=2, clump=False):
         X_test = X.ix[separ:, :].values
         y_test = y.ix[separ:, ].values
         p = optunity_tune_svc_rbf(X_train, y_train, X_test, y_test)
-        result = (predictors, p[0], p[1])
+        result = (predictors, p[0], p[1], p[2], p[3])
         print(result)
         res.append(result)
     if clump:
@@ -311,7 +311,8 @@ def tune_player_all():
     res = []
     for i in range(1, 13):
         res.append(tune_player_svc(df10, top10, para=i, clump=True))
-    print('top10%Winning Results: {}'.format(res))
+    for r in res:
+        print('top10%Winning Results: {}'.format(r))
 
 
 def tune_player():
@@ -332,9 +333,9 @@ def tune_player():
     df10 = df10.reset_index(drop=True)
     df25 = df25.reset_index(drop=True)
     df50 = df50.reset_index(drop=True)
-    result10_para1 = tune_player_svc(df10, top10, para=1)
-    result10_para2 = tune_player_svc(df10, top10, para=2)
-    result10_para3 = tune_player_svc(df10, top10, para=3)
+    result10_para1 = tune_player_svc(df10, top10, para=1, clump=True)
+    result10_para2 = tune_player_svc(df10, top10, para=2, clump=True)
+    result10_para3 = tune_player_svc(df10, top10, para=3, clump=True)
     print('top10%Winning Results: {}'.format(result10_para1))
     print('top10%Winning Results: {}'.format(result10_para2))
     print('top10%Winning Results: {}'.format(result10_para3))
@@ -648,9 +649,9 @@ if __name__ == '__main__':
     # tune_player_multi_svc()
     # X_vs_profit('Aggressive')
 
-    # tune_player()
+    tune_player()
     # tune_player_nb()
     # tune_player_logit()
-    tune_player_all()
+    # tune_player_all()
 
 
