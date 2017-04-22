@@ -1,0 +1,11 @@
+RiverVCom 0.296
+
+RiverVSim 0.239                          
+
+TurnVCom 0.241         
+
+TurnVSim 0.180    
+
+FlopVCom 0.198
+
+FlopVSim 0.123

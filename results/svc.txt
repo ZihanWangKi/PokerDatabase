@@ -1,0 +1,6 @@
+
+('AvgB', 'AvgC', 'RiverVCom', 'TurnVCom'), 0.89, 0.81, 6.44, 0.97
+('AvgB', 'AvgC', 'FlopVSim', 'RiverVCom'), 0.88, 0.79, 5.71, 0.48
+('AvgB', 'AvgC', 'TurnVSim', 'RiverVCom'), 0.88, 0.81, 6.91, 0.50
+('AvgK', 'TurnVSim', 'TurnVCom'), 0.86, 0.83, 6.99, 0.96
+('FlopVCom', 'RiverVCom'), 0.85, 0.88, 8.36, 0.91

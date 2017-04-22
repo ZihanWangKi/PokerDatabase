@@ -336,9 +336,11 @@ def tune_player():
     result10_para1 = tune_player_svc(df10, top10, para=1, clump=True)
     result10_para2 = tune_player_svc(df10, top10, para=2, clump=True)
     result10_para3 = tune_player_svc(df10, top10, para=3, clump=True)
+    result10_para4 = tune_player_svc(df10, top10, para=4, clump=True)
     print('top10%Winning Results: {}'.format(result10_para1))
     print('top10%Winning Results: {}'.format(result10_para2))
     print('top10%Winning Results: {}'.format(result10_para3))
+    print('top10%Winning Results: {}'.format(result10_para4))
 
     # result50_para1 = tune_player_svc(df50, top50, para=1)
     # # plt.plot([x[1] for x in list(reversed(result50_para1))], 'b^', label='parameter1 top50%')
@@ -557,11 +559,17 @@ def aggressive_analysis():
 
     df_top = df1[df1['Player'].isin(top10)]
     df_low = df1[df1['Player'].isin(low10)]
+    df_top = df_top.sort_values(by='AvgIncBet', ascending=False)
+    df_low = df_low.sort_values(by='AvgIncBet', ascending=True)
 
     fig = plt.figure()
 
     ax = fig.add_subplot(111)
-    ax.set_title('axes title')
+    ax.set_title('Aggressiveness')
+    num = int(df_top['Player'].count())
+    ax.set_xticklabels(['100%', '0%'])
+    ax.set_xticks([0, num])
+    plt.xlim(0, num)
 
     _top = list(df_top['Aggressive'].values)
     _low = list(df_low['Aggressive'].values)
@@ -569,8 +577,10 @@ def aggressive_analysis():
     plt.plot(_low, 'bo', label='Losing Players')
     plt.legend(loc=0)
     plt.ylabel("Aggressiveness")
+
+    plt.xlabel("Percentile")
+
     plt.show()
-    plt.savefig('Aggressive.png')
 
     print(stats.ttest_ind(_top, _low))
 
@@ -586,6 +596,7 @@ def X_vs_profit(X):
     df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
     df1['Aggressive'] = (df1['TotalC'] + df1['TotalB'] + df1['TotalR']) / (df1['TotalK'])
 
+
     df1 = df1.sort_values(by='AvgIncBet', ascending=True)
 
     fig = plt.figure()
@@ -593,6 +604,8 @@ def X_vs_profit(X):
     ax = fig.add_subplot(111)
     ax.set_title('{}-Profit'.format(X))
 
+    model = ols('AvgIncBet ~ {}'.format(X), data=df1).fit()
+    print(model.summary())
     plt.plot(df1['AvgIncBet'], df1[X], 'ro')
     plt.ylabel(X)
     plt.xlabel("Profit")
@@ -643,11 +656,18 @@ if __name__ == '__main__':
     # handvalue_boxplot_stage('Flop')
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
-    profit_plot()
-    # aggressive_analysis()
+    # profit_plot()
+    aggressive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
-    # X_vs_profit('Aggressive')
+
+
+    # X_vs_profit('RiverVCom')
+    # X_vs_profit('RiverVSim')
+    # X_vs_profit('TurnVCom')
+    # X_vs_profit('TurnVSim')
+    # X_vs_profit('FlopVCom')
+    # X_vs_profit('FlopVSim')
 
     # tune_player()
     # tune_player_nb()
