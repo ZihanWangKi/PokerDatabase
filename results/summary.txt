@@ -1,0 +1,26 @@
+Because our database do not contain the information of players who didn't play to the end(e.g. folded in the middle of the game), the average profit (and hand values are) is biased. For profit, the average profit will move a little bit towards the positive axis. However, this does not affect our classification of good and bad players, which we define as top and low 10% of the players. 
+
+Poker Database Summary:
+Our main focus is on the classification of good and bad players through there game playing history performance. We discovered a few interesting features that can be used for this classification: The basic/effective hand values and the notion of aggressiveness. All of which has a practical meaning in actual poker games. We ran Logistic Regression, Naive Bayes, and Support Vector Machine on the data we have and got a accuracy rate with 81% on test data. We found that the hand values have quite a great significance in classification, especially the hand values near the end of the game. Intuitively, this makes sense. The result of the game depends on the comparision at the last stage of game, which is captured by our RiverValueEffective. The other hand values have a quite strong correlation with it:
+Pearson Correlation between RiverVCom and RiverVSim is (0.76420314623518626, 0.0)
+Pearson Correlation between RiverVCom and TurnVCom is (0.78949750439413757, 0.0)
+Pearson Correlation between RiverVCom and TurnVSim is (0.62045308865925475, 0.0)
+Pearson Correlation between RiverVCom and FlopVCom is (0.63469023025097315, 0.0)
+Pearson Correlation between RiverVCom and FlopVSim is (0.49248608745919287, 0.0)
+
+However, in an actual case, it is rather hard to collect data of a player's average hand value of each stage, so we also focus on the cases where we do not have access to hand values. With only the four likelihood of actions and our defined aggressiveness, we are able to achieve a model with 69% of accuracy.
+
+Also notice that we don't have enough player data, which makes our classification not steady enough(sometimes the test accuracy is even higher than training).
+
+
+
+
+
+
+
+
+
+
+
+
+//For handvalues, the analysis becomes a bit more interesting. Since we are not able to include the players who made a decision of not playing to the end, the rest of the players recorded are those who resisted to the end, either betting because of their high hand value, or bluffing with a low hand value, or some other strategies.

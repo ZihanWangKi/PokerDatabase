@@ -2,7 +2,6 @@ from collections import defaultdict
 import numpy
 import sklearn.svm
 from sklearn.pipeline import Pipeline
-
 import get_percentage as gp
 import pandas as pd
 from statsmodels.formula.api import ols
@@ -17,6 +16,8 @@ import operator
 import tkinter
 import matplotlib.pyplot as plt
 import sklearn.naive_bayes as nb
+from scipy.stats.stats import pearsonr
+
 
 
 def positive(x):
@@ -140,7 +141,7 @@ def _player():
 
 def optunity_tune_logit(X_train_all, y_train_all, x_test, y_test):
     def train1(x_train, y_train, x_test, y_test, para):
-        model = linear_model.LogisticRegression(penalty='l1', C=10**para)
+        model = linear_model.LogisticRegression(penalty='l1', C=10 ** para)
         model.fit(x_train, y_train)
         p_label = model.predict(x_test)
         acc_arr = [1 for i in range(len(p_label)) if p_label[i] == y_test[i]]
@@ -178,9 +179,10 @@ def tune_player_logit():
 
     top10, top25, top50, low10, low25, low50 = player_classify()
     df10 = df[df['Player'].isin(top10 + low10)]
-    df10 = df10.reset_index(drop = True)
-    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom', 'RiverVCom',
-             'TurnVCom', 'Aggressive']
+    df10 = df10.reset_index(drop=True)
+    all_predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+                      'RiverVCom',
+                      'TurnVCom', 'Aggressive']
     res = []
     for L in range(all_predictors.__len__(), all_predictors.__len__() + 1):
         for predictors in itertools.combinations(all_predictors, L):
@@ -247,6 +249,61 @@ def tune_player_nb():
     print(sorted(res, key=lambda x: x[0], reverse=True))
 
 
+def optunity_tune_multi_svc_rbf(X_train_all, y_train_all, x_test, y_test):
+    def train1(x_train, y_train, x_test, y_test, para):
+        model = sklearn.svm.SVC(decision_function_shape='ovo', C=para[0], gamma=10 ** para[1])
+        model.fit(x_train, y_train)
+        p_label = model.predict(x_test)
+        acc_arr = [1 for i in range(len(p_label)) if p_label[i] == y_test[i]]
+        acc = float(sum(acc_arr)) / len(p_label)
+        return acc
+
+    @optunity.cross_validated(x=X_train_all, y=y_train_all, num_folds=10)
+    def svm_rbf_tuned_auroc(x_train, y_train, x_test, y_test, C, loggamma):
+        acc = train1(x_train, y_train, x_test, y_test, (C, loggamma))
+        print("train acc: {}".format(acc))
+        return acc
+
+    optimal_rbf_pars, info, _ = optunity.maximize(svm_rbf_tuned_auroc, num_evals=150, C=[0, 110], loggamma=[-10, 0],
+                                                  pmap=optunity.pmap)
+    df = optunity.call_log2dataframe(info.call_log)
+    df = df.sort_values(by='value', ascending=False)[:10]
+    df1 = df.apply(lambda x: pd.Series({'True Acc':
+                                            train1(X_train_all, y_train_all, x_test, y_test,
+                                                   (x.loc['C'], x.loc['loggamma']))
+                                        }), axis=1)
+    df3 = pd.concat([df, df1], axis=1)
+    return df3['value'].iloc[0], df3['True Acc'].iloc[0], df3['C'].iloc[0], df3['loggamma'].iloc[0]
+
+
+def tune_player_multi_svc():
+    df = pd.read_csv('players.csv')
+    df = df.loc[df['TotalGames'] >= 50]
+    df['AvgIncBet'] = (df['BankIncBet'] - df['TotalBet']) / df['TotalGames']
+    df['AvgBet'] = df['TotalBet'] / df['TotalGames']
+    df['AvgB'] = df['TotalB'] / df['TotalGames']
+    df['AvgR'] = df['TotalR'] / df['TotalGames']
+    df['AvgC'] = df['TotalC'] / df['TotalGames']
+    df['AvgK'] = df['TotalK'] / df['TotalGames']
+    df['Aggressive'] = (df['TotalC'] + df['TotalB'] + df['TotalR']) / (df['TotalK'])
+
+    top, _, low, _ = player_classify(type=1)
+
+    predictors = ['AvgBet', 'AvgB', 'AvgR', 'AvgC', 'AvgK', 'FlopVSim', 'TurnVSim', 'RiverVSim', 'FlopVCom',
+                  'RiverVCom', 'TurnVCom', 'Aggressive']
+    df = df.reset_index(drop=True)
+    df = df.sample(frac=1).reset_index(drop=True)
+    X = df[list(predictors)]
+    y = df.apply(lambda x: 1 if x.get('Player') in top else -1 if x.get('Player') in low else 0, axis=1)
+    separ = int(len(df.index) * 7 / 10)
+    X_train = X.ix[:separ - 1, :].values
+    y_train = y.ix[:separ - 1, ].values
+    X_test = X.ix[separ:, :].values
+    y_test = y.ix[separ:, ].values
+    result = optunity_tune_multi_svc_rbf(X_train, y_train, X_test, y_test)
+    print(result)
+
+
 def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
     def train1(x_train, y_train, x_test, y_test, para):
         model = sklearn.svm.SVC(kernel='rbf', C=para[0], gamma=10 ** para[1])
@@ -261,6 +318,7 @@ def optunity_tune_svc_rbf(X_train_all, y_train_all, x_test, y_test):
         acc = train1(x_train, y_train, x_test, y_test, (C, loggamma))
         # print("train acc: {}".format(acc))
         return acc
+
     optimal_rbf_pars, info, _ = optunity.maximize(svm_rbf_tuned_auroc, num_evals=50, C=[0, 10], loggamma=[-5, 0],
                                                   pmap=optunity.pmap)
     df = optunity.call_log2dataframe(info.call_log)
@@ -596,18 +654,17 @@ def X_vs_profit(X):
     df1['AvgIncBet'] = (df1['BankIncBet'] - df1['TotalBet']) / df1['TotalBet']
     df1['Aggressive'] = (df1['TotalC'] + df1['TotalB'] + df1['TotalR']) / (df1['TotalK'])
 
-
     df1 = df1.sort_values(by='AvgIncBet', ascending=True)
 
     fig = plt.figure()
 
     ax = fig.add_subplot(111)
-    ax.set_title('{}-Profit'.format(X))
+    ax.set_title('RiverVEffective-Profit')
 
     model = ols('AvgIncBet ~ {}'.format(X), data=df1).fit()
     print(model.summary())
     plt.plot(df1['AvgIncBet'], df1[X], 'ro')
-    plt.ylabel(X)
+    plt.ylabel('RiverVEffective')
     plt.xlabel("Profit")
     plt.show()
 
@@ -647,6 +704,25 @@ def totalgame_analysis():
     print(df.tail())
 
 
+def players2_split_out():
+    df = pd.read_csv("data.csv")
+    df = df[df['NumPlayers'] == 2]
+    df.to_csv('data2Players.csv', index=False)
+
+
+def players2_predict_generate():
+    df = pd.read_csv("data2Players.csv")
+    dfplayer = pd.read_csv("players.csv")
+    df_new = []
+    df_new_cols = ['Position', 'Profit', '']
+
+
+def pearson_cor_test_values():
+    df = pd.read_csv("data.csv")
+    for a, b in itertools.combinations(['RiverVCom', 'RiverVSim', 'TurnVCom', 'TurnVSim', 'FlopVCom', 'FlopVSim'], 2):
+        print("Pearson Correlation between {} and {} is {}".format(a, b, pearsonr(df[a].values, df[b].values)))
+
+
 if __name__ == '__main__':
     pd.options.mode.chained_assignment = None
     # _clean()
@@ -657,7 +733,7 @@ if __name__ == '__main__':
     # handvalue_boxplot_stage('Turn')
     # handvalue_boxplot_stage('River')
     # profit_plot()
-    aggressive_analysis()
+    # aggressive_analysis()
     # totalgame_analysis()
     # tune_player_multi_svc()
 
@@ -673,5 +749,7 @@ if __name__ == '__main__':
     # tune_player_nb()
     # tune_player_logit()
     # tune_player_all()
+    # tune_player_multi_svc()
 
-
+    # players2_split_out()
+    pearson_cor_test_values()
